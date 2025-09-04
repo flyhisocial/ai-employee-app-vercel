@@ -3,200 +3,253 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Employee V1 - Campaign Generator</title>
+    <title>AI Employee by Fly Hi Social</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
-        .chat-container { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); }
-        .chat-bubble { max-width: 80%; padding: 12px 16px; border-radius: 18px; word-wrap: break-word; }
-        .user-bubble { background-color: #0084ff; color: white; border-bottom-right-radius: 4px; align-self: flex-end; }
-        .ai-bubble { background-color: #e5e5ea; color: #2c2c2e; border-bottom-left-radius: 4px; align-self: flex-start; }
-        .ai-campaign-card { background-color: white; border-radius: 12px; border: 1px solid #e5e5ea; padding: 16px; margin-top: 8px; }
-        .modal-backdrop { background-color: rgba(0,0,0,0.6); }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #0084ff; border-radius: 50%; width: 32px; height: 32px; animation: spin 1s linear infinite; }
+        body { font-family: 'Inter', sans-serif; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #007aff; border-radius: 50%; width: 48px; height: 48px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 100; left: 50%; bottom: 30px; transform: translateX(-50%); opacity: 0; transition: opacity 0.3s, visibility 0.3s, bottom 0.3s; }
-        .toast.show { visibility: visible; opacity: 1; }
+        #branding-panel {
+            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2') no-repeat center center;
+            background-size: cover;
+        }
+        .form-input { transition: all 0.2s ease-in-out; }
+        .form-input:focus { box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.5); border-color: rgba(0, 122, 255, 0.7); }
+        .chat-bubble { max-width: 85%; padding: 12px 16px; border-radius: 18px; word-wrap: break-word; }
+        .user-bubble { background-color: #007aff; color: white; border-bottom-right-radius: 4px; align-self: flex-end; }
+        .ai-bubble { background-color: #f0f0f0; color: #1c1c1e; border-bottom-left-radius: 4px; align-self: flex-start; }
+        .ai-campaign-card { background-color: white; border-radius: 12px; border: 1px solid #e5e5ea; padding: 16px; margin-top: 8px; }
         .media-container, .carousel-container { position: relative; border-radius: 8px; overflow: hidden; }
-        .brand-logo-watermark { position: absolute; bottom: 8px; right: 8px; width: 48px; height: 48px; background-color: rgba(255, 255, 255, 0.8); backdrop-filter: blur(2px); border-radius: 6px; padding: 4px; display: flex; align-items: center; justify-content: center; z-index: 10; }
+        .overlay-text { position: absolute; bottom: 10px; left: 10px; right: 10px; background-color: rgba(0, 0, 0, 0.6); color: white; padding: 8px 12px; border-radius: 6px; font-weight: bold; text-align: center; font-size: 1rem; }
+        .carousel-track { display: flex; transition: transform 0.3s ease-in-out; }
+        .carousel-slide { min-width: 100%; position: relative; }
+        .carousel-button { position: absolute; top: 50%; transform: translateY(-50%); background-color: rgba(0, 0, 0, 0.5); color: white; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; z-index: 10; }
+        .carousel-button.prev { left: 8px; }
+        .carousel-button.next { right: 8px; }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen">
+<body class="bg-gray-100">
 
-    <!-- Auth Modal -->
-    <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
-        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-sm mx-4">
-            <div id="auth-view">
-                <h2 class="text-2xl font-bold text-gray-800 mb-2">Welcome Back!</h2>
-                <p class="text-gray-600 mb-6">Log in to access your AI Employee.</p>
-                <form id="loginForm">
-                    <div class="mb-4">
-                        <label for="loginEmail" class="block text-sm font-medium text-gray-700">Email</label>
-                        <input type="email" id="loginEmail" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
-                    </div>
-                    <div class="mb-6">
-                        <label for="loginPassword" class="block text-sm font-medium text-gray-700">Password</label>
-                        <input type="password" id="loginPassword" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
-                    </div>
-                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Log In</button>
+    <div id="appContainer" class="w-screen h-screen flex">
+        <div id="branding-panel" class="hidden md:flex w-1/2 flex-col justify-between p-12 text-white">
+            <div><h1 class="text-3xl font-bold">AI Employee</h1><p class="text-xl mt-2 opacity-80">by Fly Hi Social</p></div>
+            <div><h2 class="text-5xl font-extrabold leading-tight">Your Autonomous<br>Social Media Manager.</h2><p class="mt-4 text-lg max-w-md opacity-90">Focus on your business. Let our AI handle the content, scheduling, and growth, 24/7.</p></div>
+        </div>
+        <div class="w-full md:w-1/2 flex items-center justify-center bg-white">
+            <div id="mainLoader" class="flex flex-col items-center justify-center"><div class="loader"></div><p class="mt-4 text-gray-600">Initializing...</p></div>
+            <div id="authContainer" class="hidden w-full max-w-sm p-4"></div>
+            <div id="brandModalContainer" class="hidden w-full max-w-md p-4">
+                <h2 class="text-3xl font-bold text-gray-900">Welcome!</h2>
+                <p class="text-gray-600 mt-2 mb-8">Let's set up your brand. This helps your AI Employee create perfectly branded content for you.</p>
+                <form id="brandForm" class="space-y-4">
+                    <div><label for="businessName" class="block text-sm font-medium text-gray-700">Business Name</label><input type="text" id="businessName" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm form-input" required></div>
+                    <div><label for="industry" class="block text-sm font-medium text-gray-700">Industry / Product</label><input type="text" id="industry" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm form-input" required></div>
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition !mt-6">Save & Continue</button>
                 </form>
-                <p class="text-center text-sm text-gray-600 mt-4">
-                    Don't have an account? <a href="#" id="showRegister" class="font-medium text-blue-600 hover:underline">Sign up</a>
-                </p>
             </div>
-            <div id="register-view" class="hidden">
-                 <h2 class="text-2xl font-bold text-gray-800 mb-2">Create Your Account</h2>
-                <p class="text-gray-600 mb-6">Sign up to get started.</p>
-                <form id="registerForm">
-                    <div class="mb-4">
-                        <label for="registerEmail" class="block text-sm font-medium text-gray-700">Email</label>
-                        <input type="email" id="registerEmail" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
-                    </div>
-                    <div class="mb-6">
-                        <label for="registerPassword" class="block text-sm font-medium text-gray-700">Password</label>
-                        <input type="password" id="registerPassword" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
-                    </div>
-                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Sign Up</button>
-                </form>
-                 <p class="text-center text-sm text-gray-600 mt-4">
-                    Already have an account? <a href="#" id="showLogin" class="font-medium text-blue-600 hover:underline">Log in</a>
-                </p>
-            </div>
-             <p id="authError" class="text-red-500 text-sm mt-4 text-center"></p>
+            <div id="chatInterface" class="hidden w-full h-full max-w-md bg-white rounded-2xl flex-col"></div>
         </div>
     </div>
-    
-    <!-- Chat Interface (Initially Hidden) -->
-    <div id="chatInterface" class="hidden chat-container w-full max-w-md h-[90vh] max-h-[700px] bg-white rounded-2xl flex-col">
-       <!-- ... The rest of the chat interface remains the same ... -->
-    </div>
-    
-    <div id="toast" class="toast"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script type="module">
-        // --- ⬇️ CRITICAL STEP: Add your Firebase project's config object here ⬇️ ---
         const firebaseConfig = {
-            apiKey: "YOUR_FIREBASE_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyDV_H2WAkK_ormlueBarSUJcH0qPaH-32k",
+            authDomain: "ai-employee-prod-23980.firebaseapp.com",
+            projectId: "ai-employee-prod-23980",
+            storageBucket: "ai-employee-prod-23980.appspot.com",
+            messagingSenderId: "267727922398",
+            appId: "1:267727922398:web:2a2b16c5448012c5914e4f",
+            measurementId: "G-48LJ1VMJZT"
         };
 
-        // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
-        // Initialize Firebase
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, getAdditionalUserInfo } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 
-        // --- DOM Elements ---
-        const authModal = document.getElementById('authModal');
-        const loginForm = document.getElementById('loginForm');
-        const registerForm = document.getElementById('registerForm');
-        const showRegister = document.getElementById('showRegister');
-        const showLogin = document.getElementById('showLogin');
-        const authError = document.getElementById('authError');
+        const mainLoader = document.getElementById('mainLoader');
+        const authContainer = document.getElementById('authContainer');
+        const brandModalContainer = document.getElementById('brandModalContainer');
         const chatInterface = document.getElementById('chatInterface');
-        // ... (other DOM elements for the chat interface)
-
-        // --- State Management ---
+        
         let currentUser = null;
-        const BACKEND_URL = 'http://localhost:3000'; // Or your deployed Netlify URL
+        let brandProfile = null;
+        let isAwaitingResponse = false;
+        const BACKEND_URL = '/api'; 
 
-        // --- Auth State Management ---
-        onAuthStateChanged(auth, (user) => {
+        const loginHTML = `<h2 class="text-3xl font-bold text-gray-900">Welcome back!</h2><p class="text-gray-600 mt-2 mb-8">Please sign in to your account.</p><form id="loginForm" class="space-y-4"><div><label for="loginEmail" class="block text-sm font-medium text-gray-700">Email</label><input type="email" id="loginEmail" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm form-input" required></div><div><label for="loginPassword" class="block text-sm font-medium text-gray-700">Password</label><input type="password" id="loginPassword" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm form-input" required></div><div class="flex items-center justify-end"><a href="#" id="forgotPasswordLink" class="text-sm font-medium text-blue-600 hover:underline">Forgot Password?</a></div><button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition !mt-6">Log In</button></form><div class="relative my-6"><div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200"></div></div><div class="relative flex justify-center text-sm"><span class="bg-white px-2 text-gray-500">OR</span></div></div><div class="space-y-4"><button id="googleSignInButton" class="w-full flex items-center justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition"><svg class="w-5 h-5 mr-3" viewBox="0 0 48 48"><path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l8.35 6.52C12.91 13.46 18.06 9.5 24 9.5z"></path><path fill="#34A853" d="M46.98 24.55c0-1.57-.15-3.09-.42-4.55H24v8.51h12.8c-.57 5.4-4.5 9.49-9.8 9.49-5.88 0-10.9-4.8-10.9-10.9s5.02-10.9 10.9-10.9c3.38 0 6.22 1.63 8.03 4.03l6.53-6.53C35.37 6.46 29.97 4 24 4 12.95 4 4.02 10.15 1.05 18.6l8.28 6.47C11.32 18.33 17.15 14 24 14c4.91 0 9.07 2.22 11.59 5.68l-7.94 6.13c-1.3-2.5-3.8-4.25-6.65-4.25-4.8 0-8.75 3.55-8.75 8.75s3.95 8.75 8.75 8.75c5.38 0 8.08-3.55 8.4-5.22H24v-8.51h22.98z"></path></svg>Sign in with Google</button><p class="text-center text-sm text-gray-600 pt-2">Don't have an account? <a href="#" id="showRegister" class="font-medium text-blue-600 hover:underline">Sign up</a></p></div><p id="authError" class="text-red-500 text-sm mt-4 text-center"></p>`;
+        const registerHTML = `<h2 class="text-3xl font-bold text-gray-900">Create your account</h2><p class="text-gray-600 mt-2 mb-8">Get started with your AI Employee today.</p><form id="registerForm" class="space-y-4"><div><label for="registerEmail" class="block text-sm font-medium text-gray-700">Email</label><input type="email" id="registerEmail" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm form-input" required></div><div><label for="registerPassword" class="block text-sm font-medium text-gray-700">Password</label><input type="password" id="registerPassword" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm form-input" required></div><button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition !mt-6">Create Account</button></form><p class="text-center text-sm text-gray-600 mt-6">Already have an account? <a href="#" id="showLogin" class="font-medium text-blue-600 hover:underline">Log in</a></p><p id="authError" class="text-red-500 text-sm mt-4 text-center"></p>`;
+        const chatHTML = `<div class="p-4 border-b flex items-center justify-between"><div class="flex items-center space-x-3"><div><h1 id="chatHeader" class="text-lg font-bold"></h1><p class="text-sm text-green-500">Online</p></div></div><button id="logoutButton" class="text-sm text-gray-500 hover:text-red-500 font-semibold">Logout</button></div><div id="chatBox" class="flex-1 p-4 overflow-y-auto flex flex-col space-y-4"></div><div id="loader" class="hidden p-4 items-center justify-center"><div class="loader" style="width: 32px; height: 32px;"></div></div><div class="p-4 border-t"><div class="flex items-center space-x-2"><input type="text" id="userInput" class="flex-1 block w-full rounded-full border-gray-300 form-input" placeholder="What campaign do you need?"><button id="sendButton" class="bg-blue-600 text-white rounded-full p-3 transition hover:bg-blue-700"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button></div></div>`;
+
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
-                authModal.classList.add('hidden');
-                chatInterface.style.display = 'flex'; // Use style.display to show the flex container
-                initializeChat();
+                try {
+                    const profile = await getBrandProfile();
+                    brandProfile = profile; // Can be null
+                    if (profile && profile.name) showChatInterface();
+                    else showBrandModal();
+                } catch (e) {
+                    showAuthModal();
+                    document.getElementById('authError').textContent = "Could not verify profile.";
+                }
             } else {
                 currentUser = null;
-                authModal.classList.remove('hidden');
-                chatInterface.style.display = 'none';
+                brandProfile = null;
+                showAuthModal();
             }
+            mainLoader.style.display = 'none';
         });
         
-        // --- Auth UI Logic ---
-        showRegister.addEventListener('click', (e) => {
-            e.preventDefault();
-            document.getElementById('auth-view').classList.add('hidden');
-            document.getElementById('register-view').classList.remove('hidden');
-        });
-        
-        showLogin.addEventListener('click', (e) => {
-            e.preventDefault();
-            document.getElementById('register-view').classList.add('hidden');
-            document.getElementById('auth-view').classList.remove('hidden');
-        });
-
-        registerForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('registerEmail').value;
-            const password = document.getElementById('registerPassword').value;
-            try {
-                await createUserWithEmailAndPassword(auth, email, password);
-                // The onAuthStateChanged listener will handle the UI update
-            } catch (error) {
-                authError.textContent = error.message;
-            }
-        });
-
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-                 // The onAuthStateChanged listener will handle the UI update
-            } catch (error) {
-                authError.textContent = error.message;
-            }
-        });
-        
-        // --- UPDATED Backend API Call ---
-        async function callBackendAPI(endpoint, payload) {
-            if (!currentUser) {
-                showToast("You must be logged in.");
-                return;
-            }
+        function showAuthModal() {
+            authContainer.innerHTML = loginHTML;
+            attachAuthListeners();
+            authContainer.classList.remove('hidden');
+            brandModalContainer.classList.add('hidden');
+            chatInterface.classList.add('hidden');
+        }
+        function showBrandModal() {
+            authContainer.classList.add('hidden');
+            brandModalContainer.classList.remove('hidden');
+            chatInterface.classList.add('hidden');
+        }
+        function showChatInterface() {
+            chatInterface.innerHTML = chatHTML;
+            attachChatListeners();
+            authContainer.classList.add('hidden');
+            brandModalContainer.classList.add('hidden');
+            chatInterface.classList.remove('hidden');
+            chatInterface.style.display = 'flex';
             
-            const token = await currentUser.getIdToken();
-            
-            isAwaitingResponse = true;
-            loader.classList.remove('hidden');
-            loader.classList.add('flex');
-            try {
-                const response = await fetch(`${BACKEND_URL}${endpoint}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}` // Securely send the user's ID card
-                    },
-                    body: JSON.stringify(payload)
-                });
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Backend Error: ${response.status}. ${errorText}`);
-                }
-                return await response.json();
-            } catch (error) {
-                // ... (error handling)
-            } finally {
-                // ... (loader logic)
-            }
+            const chatHeader = document.getElementById('chatHeader');
+            chatHeader.textContent = `AI for ${brandProfile.name}`;
+            addMessageToChat('ai', `Hello! I'm ready to work for ${brandProfile.name}.`);
+        }
+
+        function attachAuthListeners() {
+            const authErrorEl = () => document.getElementById('authError');
+            document.getElementById('showRegister')?.addEventListener('click', (e) => { e.preventDefault(); authContainer.innerHTML = registerHTML; attachAuthListeners(); });
+            document.getElementById('showLogin')?.addEventListener('click', (e) => { e.preventDefault(); showAuthModal(); });
+            document.getElementById('registerForm')?.addEventListener('submit', async (e) => {
+                e.preventDefault(); authErrorEl().textContent = '';
+                const email = document.getElementById('registerEmail').value;
+                const password = document.getElementById('registerPassword').value;
+                try {
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    await handleNewUser(userCredential.user);
+                } catch (error) { authErrorEl().textContent = error.message; }
+            });
+            document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
+                e.preventDefault(); authErrorEl().textContent = '';
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+                try { await signInWithEmailAndPassword(auth, email, password); }
+                catch (error) { authErrorEl().textContent = error.message; }
+            });
+            document.getElementById('googleSignInButton')?.addEventListener('click', async () => {
+                const provider = new GoogleAuthProvider();
+                try {
+                    const result = await signInWithPopup(auth, provider);
+                    if (getAdditionalUserInfo(result).isNewUser) await handleNewUser(result.user);
+                } catch (error) { authErrorEl().textContent = error.message; }
+            });
+            document.getElementById('forgotPasswordLink')?.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('loginEmail').value;
+                if (!email) { alert("Please enter your email address first."); return; }
+                try {
+                    await sendPasswordResetEmail(auth, email);
+                    alert(`Password reset link sent to ${email}.`);
+                } catch (error) { authErrorEl().textContent = error.message; }
+            });
         }
         
-        // --- The rest of the frontend code remains largely the same ---
-        // (initializeChat, handleUserInput, generateCampaign, etc.)
-        // It will now use the new, secure callBackendAPI function.
+        document.getElementById('brandForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            brandProfile = { name: document.getElementById('businessName').value, industry: document.getElementById('industry').value };
+            await saveBrandProfile(brandProfile);
+            showChatInterface();
+        });
+        
+        function attachChatListeners() {
+            document.getElementById('logoutButton').addEventListener('click', () => signOut(auth));
+            document.getElementById('sendButton').addEventListener('click', handleUserInput);
+            document.getElementById('userInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') handleUserInput(); });
+        }
 
+        async function handleNewUser(user) {
+            const token = await user.getIdToken();
+            const response = await fetch(`${BACKEND_URL}/create-user`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+            if (!response.ok) throw new Error("Failed to create user profile.");
+        }
+        async function getBrandProfile() {
+            const token = await currentUser.getIdToken();
+            const response = await fetch(`${BACKEND_URL}/get-profile`, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (response.status === 404) return null;
+            if (!response.ok) throw new Error('Failed to fetch profile');
+            return await response.json();
+        }
+        async function saveBrandProfile(profileData) {
+            const token = await currentUser.getIdToken();
+            await fetch(`${BACKEND_URL}/save-profile`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
+                body: JSON.stringify({ brandProfile: profileData })
+            });
+        }
+        
+        function addMessageToChat(sender, message) {
+            const chatBox = document.getElementById('chatBox');
+            if(!chatBox) return;
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${sender === 'user' ? 'user-bubble' : 'ai-bubble'}`;
+            if (typeof message === 'object') {
+                bubble.appendChild(message);
+            } else {
+                bubble.textContent = message;
+            }
+            chatBox.appendChild(bubble);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function handleUserInput() {
+            const userInput = document.getElementById('userInput');
+            const loader = document.getElementById('loader');
+            const text = userInput.value.trim();
+            if (!text) return;
+            addMessageToChat('user', text);
+            userInput.value = '';
+            loader.classList.remove('hidden');
+            loader.style.display = 'flex';
+            try {
+                const token = await currentUser.getIdToken();
+                const response = await fetch(`${BACKEND_URL}/generate-campaign`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ userGoal: text, brandProfile })
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Backend error');
+                }
+                const campaignData = await response.json();
+                await displayAiCampaign(campaignData);
+            } catch (error) {
+                addMessageToChat('ai', `Sorry, an error occurred: ${error.message}`);
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        async function displayAiCampaign(campaignData) {
+            const container = document.createElement('div');
+            // ... Full implementation to display carousels, images, etc.
+            // This part connects the full-featured backend to the frontend display.
+             container.innerHTML = `<strong>Campaign: ${campaignData.campaignTitle}</strong><p>${campaignData.captions[0].caption}</p>`;
+             addMessageToChat('ai', container);
+        }
     </script>
 </body>
 </html>
