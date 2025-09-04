@@ -1,0 +1,14 @@
+{
+  "name": "ai-employee-backend",
+  "version": "1.0.0",
+  "description": "Backend server for the AI Employee application, designed for serverless deployment on Netlify.",
+  "main": "functions/server.js",
+  "dependencies": {
+    "axios": "^1.7.2",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "firebase-admin": "^12.1.1",
+    "serverless-http": "^3.2.0"
+  }
+}
+

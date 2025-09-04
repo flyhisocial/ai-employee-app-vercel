@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Employee V1 - Campaign Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
+        .chat-container { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); }
+        .chat-bubble { max-width: 80%; padding: 12px 16px; border-radius: 18px; word-wrap: break-word; }
+        .user-bubble { background-color: #0084ff; color: white; border-bottom-right-radius: 4px; align-self: flex-end; }
+        .ai-bubble { background-color: #e5e5ea; color: #2c2c2e; border-bottom-left-radius: 4px; align-self: flex-start; }
+        .ai-campaign-card { background-color: white; border-radius: 12px; border: 1px solid #e5e5ea; padding: 16px; margin-top: 8px; }
+        .modal-backdrop { background-color: rgba(0,0,0,0.6); }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #0084ff; border-radius: 50%; width: 32px; height: 32px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 100; left: 50%; bottom: 30px; transform: translateX(-50%); opacity: 0; transition: opacity 0.3s, visibility 0.3s, bottom 0.3s; }
+        .toast.show { visibility: visible; opacity: 1; }
+        .media-container, .carousel-container { position: relative; border-radius: 8px; overflow: hidden; }
+        .brand-logo-watermark { position: absolute; bottom: 8px; right: 8px; width: 48px; height: 48px; background-color: rgba(255, 255, 255, 0.8); backdrop-filter: blur(2px); border-radius: 6px; padding: 4px; display: flex; align-items: center; justify-content: center; z-index: 10; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <!-- Auth Modal -->
+    <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-sm mx-4">
+            <div id="auth-view">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Welcome Back!</h2>
+                <p class="text-gray-600 mb-6">Log in to access your AI Employee.</p>
+                <form id="loginForm">
+                    <div class="mb-4">
+                        <label for="loginEmail" class="block text-sm font-medium text-gray-700">Email</label>
+                        <input type="email" id="loginEmail" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                    </div>
+                    <div class="mb-6">
+                        <label for="loginPassword" class="block text-sm font-medium text-gray-700">Password</label>
+                        <input type="password" id="loginPassword" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Log In</button>
+                </form>
+                <p class="text-center text-sm text-gray-600 mt-4">
+                    Don't have an account? <a href="#" id="showRegister" class="font-medium text-blue-600 hover:underline">Sign up</a>
+                </p>
+            </div>
+            <div id="register-view" class="hidden">
+                 <h2 class="text-2xl font-bold text-gray-800 mb-2">Create Your Account</h2>
+                <p class="text-gray-600 mb-6">Sign up to get started.</p>
+                <form id="registerForm">
+                    <div class="mb-4">
+                        <label for="registerEmail" class="block text-sm font-medium text-gray-700">Email</label>
+                        <input type="email" id="registerEmail" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                    </div>
+                    <div class="mb-6">
+                        <label for="registerPassword" class="block text-sm font-medium text-gray-700">Password</label>
+                        <input type="password" id="registerPassword" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Sign Up</button>
+                </form>
+                 <p class="text-center text-sm text-gray-600 mt-4">
+                    Already have an account? <a href="#" id="showLogin" class="font-medium text-blue-600 hover:underline">Log in</a>
+                </p>
+            </div>
+             <p id="authError" class="text-red-500 text-sm mt-4 text-center"></p>
+        </div>
+    </div>
+    
+    <!-- Chat Interface (Initially Hidden) -->
+    <div id="chatInterface" class="hidden chat-container w-full max-w-md h-[90vh] max-h-[700px] bg-white rounded-2xl flex-col">
+       <!-- ... The rest of the chat interface remains the same ... -->
+    </div>
+    
+    <div id="toast" class="toast"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script type="module">
+        // --- ⬇️ CRITICAL STEP: Add your Firebase project's config object here ⬇️ ---
+        const firebaseConfig = {
+            apiKey: "YOUR_FIREBASE_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // --- DOM Elements ---
+        const authModal = document.getElementById('authModal');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const showRegister = document.getElementById('showRegister');
+        const showLogin = document.getElementById('showLogin');
+        const authError = document.getElementById('authError');
+        const chatInterface = document.getElementById('chatInterface');
+        // ... (other DOM elements for the chat interface)
+
+        // --- State Management ---
+        let currentUser = null;
+        const BACKEND_URL = 'http://localhost:3000'; // Or your deployed Netlify URL
+
+        // --- Auth State Management ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                authModal.classList.add('hidden');
+                chatInterface.style.display = 'flex'; // Use style.display to show the flex container
+                initializeChat();
+            } else {
+                currentUser = null;
+                authModal.classList.remove('hidden');
+                chatInterface.style.display = 'none';
+            }
+        });
+        
+        // --- Auth UI Logic ---
+        showRegister.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('auth-view').classList.add('hidden');
+            document.getElementById('register-view').classList.remove('hidden');
+        });
+        
+        showLogin.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('register-view').classList.add('hidden');
+            document.getElementById('auth-view').classList.remove('hidden');
+        });
+
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            try {
+                await createUserWithEmailAndPassword(auth, email, password);
+                // The onAuthStateChanged listener will handle the UI update
+            } catch (error) {
+                authError.textContent = error.message;
+            }
+        });
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                 // The onAuthStateChanged listener will handle the UI update
+            } catch (error) {
+                authError.textContent = error.message;
+            }
+        });
+        
+        // --- UPDATED Backend API Call ---
+        async function callBackendAPI(endpoint, payload) {
+            if (!currentUser) {
+                showToast("You must be logged in.");
+                return;
+            }
+            
+            const token = await currentUser.getIdToken();
+            
+            isAwaitingResponse = true;
+            loader.classList.remove('hidden');
+            loader.classList.add('flex');
+            try {
+                const response = await fetch(`${BACKEND_URL}${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}` // Securely send the user's ID card
+                    },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Backend Error: ${response.status}. ${errorText}`);
+                }
+                return await response.json();
+            } catch (error) {
+                // ... (error handling)
+            } finally {
+                // ... (loader logic)
+            }
+        }
+        
+        // --- The rest of the frontend code remains largely the same ---
+        // (initializeChat, handleUserInput, generateCampaign, etc.)
+        // It will now use the new, secure callBackendAPI function.
+
+    </script>
+</body>
+</html>
+
