@@ -1,13 +1,9 @@
 {
-  "name": "ai-employee-backend-vercel",
-  "version": "1.0.0",
-  "description": "Backend for AI Employee on Vercel.",
-  "main": "api/server.js",
-  "dependencies": {
-    "axios": "^1.7.2",
-    "cors": "^2.8.5",
-    "express": "^4.19.2",
-    "firebase-admin": "^12.1.1"
-  }
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/server"
+    }
+  ]
 }
 
