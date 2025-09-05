@@ -19,14 +19,6 @@
         .chat-bubble { max-width: 85%; padding: 12px 16px; border-radius: 18px; word-wrap: break-word; }
         .user-bubble { background-color: #007aff; color: white; border-bottom-right-radius: 4px; align-self: flex-end; }
         .ai-bubble { background-color: #f0f0f0; color: #1c1c1e; border-bottom-left-radius: 4px; align-self: flex-start; }
-        .ai-campaign-card { background-color: white; border-radius: 12px; border: 1px solid #e5e5ea; padding: 16px; margin-top: 8px; }
-        .media-container, .carousel-container { position: relative; border-radius: 8px; overflow: hidden; }
-        .overlay-text { position: absolute; bottom: 10px; left: 10px; right: 10px; background-color: rgba(0, 0, 0, 0.6); color: white; padding: 8px 12px; border-radius: 6px; font-weight: bold; text-align: center; font-size: 1rem; }
-        .carousel-track { display: flex; transition: transform 0.3s ease-in-out; }
-        .carousel-slide { min-width: 100%; position: relative; }
-        .carousel-button { position: absolute; top: 50%; transform: translateY(-50%); background-color: rgba(0, 0, 0, 0.5); color: white; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; z-index: 10; }
-        .carousel-button.prev { left: 8px; }
-        .carousel-button.next { right: 8px; }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -41,7 +33,7 @@
             <div id="authContainer" class="hidden w-full max-w-sm p-4"></div>
             <div id="brandModalContainer" class="hidden w-full max-w-md p-4">
                 <h2 class="text-3xl font-bold text-gray-900">Welcome!</h2>
-                <p class="text-gray-600 mt-2 mb-8">Let's set up your brand. This helps your AI Employee create perfectly branded content for you.</p>
+                <p class="text-gray-600 mt-2 mb-8">Let's set up your brand.</p>
                 <form id="brandForm" class="space-y-4">
                     <div><label for="businessName" class="block text-sm font-medium text-gray-700">Business Name</label><input type="text" id="businessName" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm form-input" required></div>
                     <div><label for="industry" class="block text-sm font-medium text-gray-700">Industry / Product</label><input type="text" id="industry" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm form-input" required></div>
@@ -76,7 +68,6 @@
         
         let currentUser = null;
         let brandProfile = null;
-        let isAwaitingResponse = false;
         const BACKEND_URL = '/api'; 
 
         const loginHTML = `<h2 class="text-3xl font-bold text-gray-900">Welcome back!</h2><p class="text-gray-600 mt-2 mb-8">Please sign in to your account.</p><form id="loginForm" class="space-y-4"><div><label for="loginEmail" class="block text-sm font-medium text-gray-700">Email</label><input type="email" id="loginEmail" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm form-input" required></div><div><label for="loginPassword" class="block text-sm font-medium text-gray-700">Password</label><input type="password" id="loginPassword" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm form-input" required></div><div class="flex items-center justify-end"><a href="#" id="forgotPasswordLink" class="text-sm font-medium text-blue-600 hover:underline">Forgot Password?</a></div><button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition !mt-6">Log In</button></form><div class="relative my-6"><div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200"></div></div><div class="relative flex justify-center text-sm"><span class="bg-white px-2 text-gray-500">OR</span></div></div><div class="space-y-4"><button id="googleSignInButton" class="w-full flex items-center justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition"><svg class="w-5 h-5 mr-3" viewBox="0 0 48 48"><path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l8.35 6.52C12.91 13.46 18.06 9.5 24 9.5z"></path><path fill="#34A853" d="M46.98 24.55c0-1.57-.15-3.09-.42-4.55H24v8.51h12.8c-.57 5.4-4.5 9.49-9.8 9.49-5.88 0-10.9-4.8-10.9-10.9s5.02-10.9 10.9-10.9c3.38 0 6.22 1.63 8.03 4.03l6.53-6.53C35.37 6.46 29.97 4 24 4 12.95 4 4.02 10.15 1.05 18.6l8.28 6.47C11.32 18.33 17.15 14 24 14c4.91 0 9.07 2.22 11.59 5.68l-7.94 6.13c-1.3-2.5-3.8-4.25-6.65-4.25-4.8 0-8.75 3.55-8.75 8.75s3.95 8.75 8.75 8.75c5.38 0 8.08-3.55 8.4-5.22H24v-8.51h22.98z"></path></svg>Sign in with Google</button><p class="text-center text-sm text-gray-600 pt-2">Don't have an account? <a href="#" id="showRegister" class="font-medium text-blue-600 hover:underline">Sign up</a></p></div><p id="authError" class="text-red-500 text-sm mt-4 text-center"></p>`;
@@ -88,7 +79,7 @@
                 currentUser = user;
                 try {
                     const profile = await getBrandProfile();
-                    brandProfile = profile; // Can be null
+                    brandProfile = profile;
                     if (profile && profile.name) showChatInterface();
                     else showBrandModal();
                 } catch (e) {
@@ -205,11 +196,7 @@
             if(!chatBox) return;
             const bubble = document.createElement('div');
             bubble.className = `chat-bubble ${sender === 'user' ? 'user-bubble' : 'ai-bubble'}`;
-            if (typeof message === 'object') {
-                bubble.appendChild(message);
-            } else {
-                bubble.textContent = message;
-            }
+            bubble.textContent = message;
             chatBox.appendChild(bubble);
             chatBox.scrollTop = chatBox.scrollHeight;
         }
@@ -235,20 +222,12 @@
                     throw new Error(errorData.error || 'Backend error');
                 }
                 const campaignData = await response.json();
-                await displayAiCampaign(campaignData);
+                addMessageToChat('ai', `Here is your campaign for "${campaignData.campaignTitle}":\n\n${campaignData.captions[0].caption}`);
             } catch (error) {
                 addMessageToChat('ai', `Sorry, an error occurred: ${error.message}`);
             } finally {
                 loader.style.display = 'none';
             }
-        }
-
-        async function displayAiCampaign(campaignData) {
-            const container = document.createElement('div');
-            // ... Full implementation to display carousels, images, etc.
-            // This part connects the full-featured backend to the frontend display.
-             container.innerHTML = `<strong>Campaign: ${campaignData.campaignTitle}</strong><p>${campaignData.captions[0].caption}</p>`;
-             addMessageToChat('ai', container);
         }
     </script>
 </body>
