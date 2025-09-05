@@ -20,6 +20,7 @@
         }
         .loader { border: 4px solid rgba(255, 255, 255, 0.3); border-top: 4px solid #ffffff; border-radius: 50%; width: 48px; height: 48px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
         .glass-panel {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
@@ -36,15 +37,15 @@
         .user-bubble { background-color: #007aff; color: white; border-bottom-right-radius: 4px; align-self: flex-end; }
         .ai-bubble { background-color: #f0f0f0; color: #1c1c1e; border-bottom-left-radius: 4px; align-self: flex-start; }
         .capability-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
+        .ai-campaign-card { background-color: white; border-radius: 12px; border: 1px solid #e5e5ea; padding: 16px; margin-top: 8px; }
+        .media-loader-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; background-color: #f8f9fa; border-radius: 8px; }
     </style>
 </head>
 <body class="w-screen h-screen flex items-center justify-center p-4">
 
     <div class="background-overlay"></div>
     <div id="appContainer" class="w-full h-full flex items-center justify-center">
-        <div id="mainLoader" class="flex flex-col items-center justify-center text-white">
-            <div class="loader"></div><p class="mt-4 text-lg">Initializing...</p>
-        </div>
+        <div id="mainLoader" class="flex flex-col items-center justify-center text-white"><div class="loader"></div><p class="mt-4 text-lg">Initializing...</p></div>
         <div id="mainContent" class="hidden w-full max-w-md">
             <div id="authContainer" class="hidden glass-panel p-8 text-white"></div>
             <div id="brandModalContainer" class="hidden glass-panel p-8 text-white"></div>
@@ -79,6 +80,7 @@
         
         let currentUser = null;
         let brandProfile = null;
+        let isAwaitingResponse = false;
         const BACKEND_URL = '/api'; 
 
         const loginHTML = `<h1 class="text-4xl font-extrabold text-center">AI Employee</h1><p class="text-center opacity-80 mt-2 mb-8">by Fly Hi Social</p><form id="loginForm" class="space-y-4"><div><input type="email" id="loginEmail" class="w-full rounded-lg form-input px-4 py-3" placeholder="Email" required></div><div><input type="password" id="loginPassword" class="w-full rounded-lg form-input px-4 py-3" placeholder="Password" required></div><div class="flex items-center justify-end"><a href="#" id="forgotPasswordLink" class="text-sm font-medium hover:underline">Forgot Password?</a></div><button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition !mt-6">Sign In</button></form><div class="relative my-6"><div class="absolute inset-0 flex items-center"><div class="w-full border-t border-white/20"></div></div><div class="relative flex justify-center text-sm"><span class="bg-white/10 px-2 text-white/80 rounded-full">OR</span></div></div><div class="space-y-4"><button id="googleSignInButton" class="w-full flex items-center justify-center py-3 px-4 border border-white/30 rounded-lg bg-white/20 hover:bg-white/30 transition"><svg class="w-5 h-5 mr-3" viewBox="0 0 48 48"><path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l8.35 6.52C12.91 13.46 18.06 9.5 24 9.5z"></path><path fill="#34A853" d="M46.98 24.55c0-1.57-.15-3.09-.42-4.55H24v8.51h12.8c-.57 5.4-4.5 9.49-9.8 9.49-5.88 0-10.9-4.8-10.9-10.9s5.02-10.9 10.9-10.9c3.38 0 6.22 1.63 8.03 4.03l6.53-6.53C35.37 6.46 29.97 4 24 4 12.95 4 4.02 10.15 1.05 18.6l8.28 6.47C11.32 18.33 17.15 14 24 14c4.91 0 9.07 2.22 11.59 5.68l-7.94 6.13c-1.3-2.5-3.8-4.25-6.65-4.25-4.8 0-8.75 3.55-8.75 8.75s3.95 8.75 8.75 8.75c5.38 0 8.08-3.55 8.4-5.22H24v-8.51h22.98z"></path></svg>Sign in with Google</button><p class="text-center text-sm pt-2">Don't have an account? <a href="#" id="showRegister" class="font-medium hover:underline">Sign up</a></p></div><p id="authError" class="text-red-300 text-sm mt-4 text-center"></p>`;
@@ -86,70 +88,62 @@
         const brandModalHTML = `<h2 class="text-3xl font-bold">Welcome!</h2><p class="opacity-80 mt-2 mb-8">Let's set up your brand.</p><form id="brandForm" class="space-y-4"><div><input type="text" id="businessName" class="w-full rounded-lg form-input px-4 py-3" placeholder="Business Name" required></div><div><input type="text" id="industry" class="w-full rounded-lg form-input px-4 py-3" placeholder="Industry / Product" required></div><button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg !mt-6">Save & Continue</button></form>`;
         const missionControlHTML = `<div id="welcomeMat" class="text-center"><h2 class="text-4xl font-bold"></h2><p class="opacity-80 mt-2">Your AI Employee is ready to work.</p><button id="getStartedBtn" class="mt-8 bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition">Let's Get Started</button></div><div id="capabilityHub" class="hidden w-full space-y-4"><h3 class="text-xl font-bold text-center mb-6">What can I help you with today?</h3><div id="createPostCard" class="capability-card bg-white/20 p-6 rounded-lg border border-white/20 cursor-pointer"><h4 class="text-lg font-bold">Create a Social Media Post</h4><p class="opacity-80">Generate a unique post with text and images.</p></div><div id="writeContentCard" class="capability-card bg-white/20 p-6 rounded-lg border border-white/20 cursor-pointer"><h4 class="text-lg font-bold">Write Business Content</h4><p class="opacity-80">Craft professional emails, customer replies, etc.</p></div><div id="getPlanCard" class="capability-card bg-white/20 p-6 rounded-lg border border-white/20 cursor-pointer"><h4 class="text-lg font-bold">Get a Strategic Plan</h4><p class="opacity-80">Let me build a custom content calendar.</p></div></div>`;
         const chatHTML = `<div class="p-4 border-b border-gray-200 flex items-center justify-between"><div class="flex items-center space-x-3"><button id="backToMissionControl" class="text-blue-600 font-semibold text-sm p-2 rounded-md hover:bg-gray-100">< Back</button><div><h1 id="chatHeader" class="text-lg font-bold"></h1></div></div><button id="logoutButton" class="text-sm text-gray-500 hover:text-red-500">Logout</button></div><div id="chatBox" class="flex-1 p-4 overflow-y-auto flex flex-col space-y-4"></div><div id="loader" class="hidden p-4 items-center justify-center"><div class="loader" style="width: 32px; height: 32px;"></div></div><div class="p-4 border-t border-gray-200"><div class="flex items-center space-x-2"><input type="text" id="userInput" class="flex-1 block w-full rounded-full border-gray-300 form-input !text-black !placeholder-gray-500" placeholder="What can I create for you?"><button id="sendButton" class="bg-blue-600 text-white rounded-full p-3"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button></div></div>`;
-
+        
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
                 try {
                     const profile = await getBrandProfile();
                     brandProfile = profile;
-                    if (profile && profile.name) showMissionControl();
-                    else showBrandModal();
+                    if (profile && profile.name) renderView('mission');
+                    else renderView('brand');
                 } catch (e) {
-                    showAuthModal();
+                    renderView('auth');
                     authContainer.querySelector('#authError').textContent = "Could not verify profile.";
                 }
             } else {
                 currentUser = null; brandProfile = null;
-                showAuthModal();
+                renderView('auth');
             }
             mainLoader.style.display = 'none';
             mainContent.classList.remove('hidden');
         });
         
-        function showAuthModal() {
-            authContainer.innerHTML = loginHTML;
-            attachAuthListeners();
-            authContainer.classList.remove('hidden');
-            brandModalContainer.classList.add('hidden');
-            missionControl.classList.add('hidden');
-            chatInterface.classList.add('hidden');
-        }
-        function showBrandModal() {
-            brandModalContainer.innerHTML = brandModalHTML;
-            brandModalContainer.classList.remove('hidden');
-            authContainer.classList.add('hidden');
-            missionControl.classList.add('hidden');
-            chatInterface.classList.add('hidden');
-            document.getElementById('brandForm').addEventListener('submit', handleBrandFormSubmit);
-        }
-        function showMissionControl() {
-            missionControl.innerHTML = missionControlHTML;
-            attachMissionControlListeners();
-            missionControl.classList.remove('hidden');
-            missionControl.style.display = 'flex';
-            authContainer.classList.add('hidden');
-            brandModalContainer.classList.add('hidden');
-            chatInterface.classList.add('hidden');
-            missionControl.querySelector('h2').textContent = `Welcome, ${brandProfile.name}!`;
-        }
-        function showChatInterface(mode) {
-            mainContent.classList.remove('glass-panel'); 
-            chatInterface.innerHTML = chatHTML;
-            attachChatListeners(mode);
-            authContainer.classList.add('hidden');
-            brandModalContainer.classList.add('hidden');
-            missionControl.classList.add('hidden');
-            chatInterface.classList.remove('hidden');
-            chatInterface.style.display = 'flex';
-            document.getElementById('chatHeader').textContent = mode;
-            addMessageToChat('ai', `Great! What is the goal of the ${mode.toLowerCase()} you want to create?`);
+        function renderView(viewName) {
+            authContainer.style.display = 'none';
+            brandModalContainer.style.display = 'none';
+            missionControl.style.display = 'none';
+            chatInterface.style.display = 'none';
+            switch(viewName) {
+                case 'auth':
+                    authContainer.innerHTML = loginHTML;
+                    attachAuthListeners();
+                    authContainer.style.display = 'block';
+                    break;
+                case 'brand':
+                    brandModalContainer.innerHTML = brandModalHTML;
+                    brandModalContainer.style.display = 'block';
+                    document.getElementById('brandForm').addEventListener('submit', handleBrandFormSubmit);
+                    break;
+                case 'mission':
+                    missionControl.innerHTML = missionControlHTML;
+                    attachMissionControlListeners();
+                    missionControl.style.display = 'block';
+                    missionControl.querySelector('h2').textContent = `Welcome, ${brandProfile.name}!`;
+                    break;
+                case 'chat':
+                    mainContent.classList.remove('glass-panel');
+                    chatInterface.innerHTML = chatHTML;
+                    attachChatListeners('Social Post');
+                    chatInterface.style.display = 'flex';
+                    break;
+            }
         }
 
         function attachAuthListeners() {
             const authErrorEl = () => document.getElementById('authError');
             document.getElementById('showRegister')?.addEventListener('click', (e) => { e.preventDefault(); authContainer.innerHTML = registerHTML; attachAuthListeners(); });
-            document.getElementById('showLogin')?.addEventListener('click', (e) => { e.preventDefault(); showAuthModal(); });
+            document.getElementById('showLogin')?.addEventListener('click', (e) => { e.preventDefault(); renderView('auth'); });
             document.getElementById('registerForm')?.addEventListener('submit', async (e) => {
                 e.preventDefault(); authErrorEl().textContent = '';
                 const email = document.getElementById('registerEmail').value;
@@ -188,29 +182,103 @@
             e.preventDefault();
             brandProfile = { name: document.getElementById('businessName').value, industry: document.getElementById('industry').value };
             await saveBrandProfile(brandProfile);
-            showMissionControl();
+            renderView('mission');
         }
         function attachMissionControlListeners() {
             document.getElementById('getStartedBtn').addEventListener('click', () => {
                 document.getElementById('welcomeMat').classList.add('hidden');
                 document.getElementById('capabilityHub').classList.remove('hidden');
             });
-            document.getElementById('createPostCard').addEventListener('click', () => showChatInterface('Social Post'));
-            document.getElementById('writeContentCard').addEventListener('click', () => showChatInterface('Business Content'));
-            document.getElementById('getPlanCard').addEventListener('click', () => showChatInterface('Strategic Plan'));
+            document.getElementById('createPostCard').addEventListener('click', () => renderView('chat'));
+            document.getElementById('writeContentCard').addEventListener('click', () => renderView('chat'));
+            document.getElementById('getPlanCard').addEventListener('click', () => renderView('chat'));
         }
         function attachChatListeners(mode) {
             document.getElementById('logoutButton').addEventListener('click', () => { mainContent.classList.add('glass-panel'); signOut(auth); });
             document.getElementById('sendButton').addEventListener('click', () => handleUserInput(mode));
             document.getElementById('userInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') handleUserInput(mode); });
-            document.getElementById('backToMissionControl').addEventListener('click', () => { mainContent.classList.add('glass-panel'); showMissionControl(); });
+            document.getElementById('backToMissionControl').addEventListener('click', () => { mainContent.classList.add('glass-panel'); renderView('mission'); });
         }
         
-        async function handleNewUser(user) { /* ... */ }
-        async function getBrandProfile() { /* ... */ }
-        async function saveBrandProfile(profileData) { /* ... */ }
-        function addMessageToChat(sender, message) { /* ... */ }
-        async function handleUserInput(mode) { /* ... */ }
+        async function handleNewUser(user) {
+            const token = await user.getIdToken();
+            const response = await fetch(`${BACKEND_URL}/create-user`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+            if (!response.ok) throw new Error("Failed to create user profile.");
+        }
+        async function getBrandProfile() {
+            const token = await currentUser.getIdToken();
+            const response = await fetch(`${BACKEND_URL}/get-profile`, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (response.status === 404) return null;
+            if (!response.ok) throw new Error('Failed to fetch profile');
+            return await response.json();
+        }
+        async function saveBrandProfile(profileData) {
+            const token = await currentUser.getIdToken();
+            await fetch(`${BACKEND_URL}/save-profile`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
+                body: JSON.stringify({ brandProfile: profileData })
+            });
+        }
+        
+        function addMessageToChat(sender, message) {
+            const chatBox = document.getElementById('chatBox');
+            if(!chatBox) return;
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${sender === 'user' ? 'user-bubble' : 'ai-bubble'}`;
+            if (typeof message === 'object' && message.nodeType === 1) {
+                bubble.appendChild(message);
+            } else {
+                bubble.innerHTML = message.replace(/\n/g, '<br>');
+            }
+            chatBox.appendChild(bubble);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function handleUserInput(mode) {
+            const userInput = document.getElementById('userInput');
+            const loader = document.getElementById('loader');
+            const text = userInput.value.trim();
+            if (!text || isAwaitingResponse) return;
+            addMessageToChat('user', text);
+            userInput.value = '';
+            isAwaitingResponse = true;
+            loader.classList.remove('hidden');
+            loader.style.display = 'flex';
+            
+            try {
+                const endpoint = (mode === 'Social Post') ? '/generate-campaign' : '/generate-response';
+                const response = await callBackend(endpoint, { userGoal: text, brandProfile });
+                
+                // This is where we will build the rich content display
+                if(response && response.campaignTitle) {
+                     addMessageToChat('ai', `Here is your campaign for "${response.campaignTitle}":\n\n${response.captions[0].caption}`);
+                } else if (response && response.response) {
+                    addMessageToChat('ai', response.response);
+                } else {
+                    throw new Error("Invalid response from the server.");
+                }
+            } catch (error) {
+                addMessageToChat('ai', `Sorry, an error occurred: ${error.message}`);
+            } finally {
+                isAwaitingResponse = false;
+                loader.style.display = 'none';
+            }
+        }
+        
+        async function callBackend(endpoint, payload) {
+             const token = await currentUser.getIdToken();
+             const response = await fetch(`${BACKEND_URL}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Backend error');
+            }
+            return await response.json();
+        }
     </script>
 </body>
 </html>
