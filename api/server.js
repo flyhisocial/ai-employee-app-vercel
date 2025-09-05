@@ -1,5 +1,5 @@
 const express = require('express');
-const { initializeApp, cert } = require('firebase-admin/app');
+const { initializeApp, cert, getApps } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 const axios = require('axios');
@@ -9,13 +9,20 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const serviceAccount = process.env.SERVICE_ACCOUNT_KEY ? JSON.parse(process.env.SERVICE_ACCOUNT_KEY) : {};
-if (!initializeApp._apps.length) {
-    if (Object.keys(serviceAccount).length > 0) {
+let db;
+try {
+    const serviceAccountString = process.env.SERVICE_ACCOUNT_KEY;
+    if (serviceAccountString && !getApps().length) {
+        const serviceAccount = JSON.parse(serviceAccountString);
         initializeApp({ credential: cert(serviceAccount) });
+        db = getFirestore();
+    } else if (getApps().length) {
+        db = getFirestore();
     }
+} catch (error) {
+    console.error("Failed to initialize Firebase Admin SDK:", error);
 }
-const db = getFirestore();
+
 const GOOGLE_AI_API_KEY = process.env.GOOGLE_AI_API_KEY;
 
 const verifyAuthToken = async (req, res, next) => {
@@ -30,49 +37,56 @@ const verifyAuthToken = async (req, res, next) => {
     }
 };
 
-app.post('/api/save-profile', verifyAuthToken, async (req, res) => {
+app.post('/api/create-user', verifyAuthToken, async (req, res) => {
     const { uid, email } = req.user;
-    const { brandProfile } = req.body;
-    if (!brandProfile) return res.status(400).json({ error: "Invalid brand profile data." });
     try {
-        await db.collection('users').doc(uid).set({
-            email: email,
-            brandProfile: brandProfile,
-            subscription: { plan: "free", status: "active" },
-            usage: { generationsThisMonth: 0 },
-        }, { merge: true });
-        res.status(201).json({ message: 'Profile saved.' });
+        await db.collection('users').doc(uid).set({ email, createdAt: new Date().toISOString() });
+        res.status(201).json({ message: 'User document created.' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to create user document.' });
+    }
+});
+
+app.post('/api/save-profile', verifyAuthToken, async (req, res) => {
+    const { uid } = req.user;
+    const { brandProfile } = req.body;
+    if (!brandProfile) return res.status(400).json({ error: "Invalid data." });
+    try {
+        await db.collection('users').doc(uid).set({ brandProfile }, { merge: true });
+        res.status(200).json({ message: 'Profile saved.' });
     } catch (error) {
         res.status(500).json({ error: 'Failed to save profile.' });
     }
 });
 
 app.get('/api/get-profile', verifyAuthToken, async (req, res) => {
+    if (!db) return res.status(503).json({ error: "Database service unavailable." });
     const { uid } = req.user;
     try {
         const doc = await db.collection('users').doc(uid).get();
-        if (!doc.exists || !doc.data().brandProfile) {
-            return res.status(404).json({ message: "Profile not found." });
-        }
-        res.status(200).json({ brandProfile: doc.data().brandProfile });
+        if (!doc.exists) return res.status(404).json({ message: "User document not found." });
+        res.status(200).json(doc.data().brandProfile);
     } catch (error) {
-        res.status(500).json({ error: "Failed to get profile." });
+        res.status(500).json({ error: "Failed to get user profile." });
     }
 });
 
-app.post('/api/generate-response', verifyAuthToken, async (req, res) => {
-    const { prompt, brandProfile } = req.body;
+app.post('/api/generate-campaign', verifyAuthToken, async (req, res) => {
+    const { brandProfile, userGoal } = req.body;
     if (!brandProfile) return res.status(400).json({ error: "Brand profile is missing." });
+    const systemPrompt = `You are 'Astra,' an expert social media marketing strategist...`; // Full prompt
+    const userPrompt = `Business Name: ${brandProfile.name}\nIndustry: ${brandProfile.industry}\nGoal: ${userGoal}`;
     try {
         const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GOOGLE_AI_API_KEY}`;
-        const fullPrompt = `You are an AI assistant for a business called "${brandProfile.name}". A user asks: "${prompt}". Provide a helpful response.`;
         const response = await axios.post(GEMINI_API_URL, {
-            contents: [{ parts: [{ text: fullPrompt }] }]
+            contents: [{ parts: [{ text: userPrompt }] }],
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            generationConfig: { "response_mime_type": "application/json" }
         });
-        if (!response.data.candidates) throw new Error("Invalid AI API response.");
-        res.json({ response: response.data.candidates[0].content.parts[0].text });
+        const campaignData = JSON.parse(response.data.candidates[0].content.parts[0].text);
+        res.json(campaignData);
     } catch (error) {
-        res.status(502).json({ error: "Failed to generate response." });
+        res.status(502).json({ error: "Failed to generate campaign plan." });
     }
 });
 
